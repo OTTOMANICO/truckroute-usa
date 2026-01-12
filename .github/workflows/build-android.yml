@@ -31,9 +31,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-
       - name: Setup Expo
         uses: expo/expo-github-action@v8
         with:
@@ -44,22 +41,27 @@ jobs:
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Install Android dependencies
+      - name: Create assets directory
+        run: mkdir -p android/app/src/main/assets
+
+      - name: Bundle JavaScript
+        run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+
+      - name: Build Release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew --version
+          ./gradlew assembleRelease
 
-      - name: Build Debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug
-
-      - name: Rename APK
-        run: mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/TruckRoute-USA.apk
+      - name: Sign APK (Debug key for testing)
+        run: |
+          # Use debug keystore for testing
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk android/app/build/outputs/apk/release/TruckRoute-USA.apk || \
+          cp android/app/build/outputs/apk/release/app-release.apk android/app/build/outputs/apk/release/TruckRoute-USA.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TruckRoute-USA-APK
-          path: android/app/build/outputs/apk/debug/TruckRoute-USA.apk
+          path: android/app/build/outputs/apk/release/TruckRoute-USA.apk
           retention-days: 30
