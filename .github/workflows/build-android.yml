@@ -44,24 +44,27 @@ jobs:
       - name: Create assets directory
         run: mkdir -p android/app/src/main/assets
 
-      - name: Bundle JavaScript
-        run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+      - name: Export and Bundle JavaScript
+        run: |
+          npx expo export --platform android --output-dir dist
+          cp dist/bundles/android-*.js android/app/src/main/assets/index.android.bundle 2>/dev/null || \
+          npx expo export:embed --platform android --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --dev false
 
       - name: Build Release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --no-daemon
 
-      - name: Sign APK (Debug key for testing)
+      - name: Find and rename APK
         run: |
-          # Use debug keystore for testing
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk android/app/build/outputs/apk/release/TruckRoute-USA.apk || \
-          cp android/app/build/outputs/apk/release/app-release.apk android/app/build/outputs/apk/release/TruckRoute-USA.apk
+          find android -name "*.apk" -type f
+          APK_PATH=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
+          cp "$APK_PATH" ./TruckRoute-USA.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TruckRoute-USA-APK
-          path: android/app/build/outputs/apk/release/TruckRoute-USA.apk
+          path: ./TruckRoute-USA.apk
           retention-days: 30
